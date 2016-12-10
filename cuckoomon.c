@@ -907,6 +907,28 @@ extern CRITICAL_SECTION g_writing_log_buffer_mutex;
 
 OSVERSIONINFOA g_osverinfo;
 
+static const wchar_t *g_ignored_processpaths[] = {
+	L"C:\\WINDOWS\\system32\\dwwin.exe",
+	L"C:\\WINDOWS\\system32\\dumprep.exe",
+	L"C:\\WINDOWS\\system32\\drwtsn32.exe",
+	L"C:\\Program Files\\Immunity Inc\\Immunity Debugger\\ImmunityDebugger.exe",
+	NULL,
+};
+
+
+static int is_ignored_process()
+{
+	wchar_t process_path[MAX_PATH];
+	GetModuleFileNameW(NULL, process_path, MAX_PATH);
+	GetLongPathNameW(process_path, process_path, MAX_PATH);
+	for (uint32_t idx = 0; g_ignored_processpaths[idx] != NULL; idx++) {
+		if (!wcsicmp(g_ignored_processpaths[idx], process_path)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 BOOL APIENTRY DllMain(HANDLE hModule, DWORD dwReason, LPVOID lpReserved)
 {
 	char config_fname[MAX_PATH];
@@ -914,7 +936,7 @@ BOOL APIENTRY DllMain(HANDLE hModule, DWORD dwReason, LPVOID lpReserved)
 
 	get_lasterrors(&lasterror);
 
-	if (dwReason == DLL_PROCESS_ATTACH) {
+	if (dwReason == DLL_PROCESS_ATTACH && is_ignored_process() == 0) {
 		unsigned int i;
 		DWORD pids[MAX_PROTECTED_PIDS];
 		unsigned int length = sizeof(pids);
